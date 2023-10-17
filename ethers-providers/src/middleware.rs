@@ -962,6 +962,16 @@ pub trait Middleware: Sync + Send + Debug {
         self.inner().subscribe_logs(filter).await.map_err(MiddlewareError::from_err)
     }
 
+    async fn subscribe_block_logs<'a>(
+        &'a self,
+        filter: &Filter,
+    ) -> Result<SubscriptionStream<'a, Self::Provider, Vec<Log>>, Self::Error>
+        where
+            <Self as Middleware>::Provider: PubsubClient,
+    {
+        self.inner().subscribe_block_logs(filter).await.map_err(MiddlewareError::from_err)
+    }
+
     /// Query the node for a [`FeeHistory`] object. This objct contains
     /// information about the EIP-1559 base fee in past blocks, as well as gas
     /// utilization within those blocks.

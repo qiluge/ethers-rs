@@ -1113,6 +1113,33 @@ impl<P: JsonRpcClient> Middleware for Provider<P> {
         })
     }
 
+    async fn subscribe_block_logs<'a>(
+        &'a self,
+        filter: &Filter,
+    ) -> Result<SubscriptionStream<'a, P, Vec<Log>>, ProviderError>
+        where
+            P: PubsubClient,
+    {
+        let loaded_logs = match filter.block_option {
+            FilterBlockOption::Range { from_block, to_block: _ } => {
+                if from_block.is_none() {
+                    vec![vec![]]
+                } else {
+                    vec![self.get_logs(filter).await?]
+                }
+            }
+            FilterBlockOption::AtBlockHash(_block_hash) => vec![self.get_logs(filter).await?],
+        };
+        let loaded_logs = VecDeque::from(loaded_logs);
+
+        let logs = utils::serialize(&"blkLogs"); // TODO: Make this a static
+        let filter = utils::serialize(filter);
+        self.subscribe([logs, filter]).await.map(|mut stream| {
+            stream.set_loaded_elements(loaded_logs);
+            stream
+        })
+    }
+
     async fn fee_history<T: Into<U256> + Send + Sync>(
         &self,
         block_count: T,
